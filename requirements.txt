@@ -1,0 +1,4 @@
+requests>=2.31.0
+rich>=13.0.0
+mlx-lm>=0.0.3
+huggingface-hub>=0.20.0 

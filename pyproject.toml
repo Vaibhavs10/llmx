@@ -5,13 +5,15 @@ description = "CLI tool for managing MLX-LM models and servers"
 authors = [
     {name = "Your Name", email = "your.email@example.com"},
 ]
-dependencies = [
-    "requests>=2.31.0",
-    "rich>=13.0.0",
-    "mlx-lm>=0.0.3",
-    "huggingface-hub>=0.20.0",
-]
+readme = "README.md"
 requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+dependencies = []  # Dependencies are managed in requirements.txt for better uv compatibility
 
 [project.scripts]
 llmx = "llmx.cli:main"

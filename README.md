@@ -1,8 +1,32 @@
-# LLMX
+# llmx
 
 A CLI tool for managing MLX-LM models and servers. LLMX provides a convenient interface for downloading, managing, and serving MLX-LM models with OpenAI-compatible API endpoints.
 
 ## Installation
+
+### Using uv (Recommended)
+
+First, install `uv` if you haven't already:
+```bash
+pip install uv
+```
+
+Then install llmx using uv:
+```bash
+# Create and activate a new virtual environment
+uv venv
+source .venv/bin/activate  # On Unix/macOS
+# OR
+.venv\Scripts\activate     # On Windows
+
+# Install dependencies
+uv pip install -r requirements.txt
+
+# Install the package in editable mode
+uv pip install -e .
+```
+
+### Using pip (Alternative)
 
 ```bash
 pip install .
