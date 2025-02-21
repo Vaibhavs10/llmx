@@ -12,17 +12,16 @@ from pathlib import Path
 import subprocess
 import signal
 import requests
-from huggingface_hub import HfApi
+from huggingface_hub import HfApi, snapshot_download, try_to_load_from_cache, get_cache_dir
 
 console = Console()
 
 # Constants
 LLMX_HOME = os.path.expanduser("~/.llmx")
-MODELS_DIR = os.path.join(LLMX_HOME, "models")
 RUNNING_FILE = os.path.join(LLMX_HOME, "running.json")
 
 # Ensure directories exist
-os.makedirs(MODELS_DIR, exist_ok=True)
+os.makedirs(LLMX_HOME, exist_ok=True)
 
 def load_running_models():
     if os.path.exists(RUNNING_FILE):
@@ -33,6 +32,15 @@ def load_running_models():
 def save_running_models(running_models):
     with open(RUNNING_FILE, 'w') as f:
         json.dump(running_models, f)
+
+def get_model_path(model_id):
+    """Get the path to a model in the Hugging Face cache"""
+    # First try to find it in the cache
+    cached_files = try_to_load_from_cache(model_id)
+    if cached_files:
+        # Return the directory containing the model
+        return str(Path(cached_files).parent)
+    return None
 
 @click.group()
 def cli():
@@ -50,10 +58,17 @@ def serve(model_id, port):
         console.print(f"[red]Port {port} is already in use by another model server[/red]")
         return
 
-    model_path = os.path.join(MODELS_DIR, model_id)
-    if not os.path.exists(model_path):
+    model_path = get_model_path(model_id)
+    if not model_path:
         console.print(f"[yellow]Model {model_id} not found locally. Attempting to pull...[/yellow]")
-        subprocess.run(['llmx', 'pull', model_id])
+        try:
+            model_path = snapshot_download(
+                repo_id=model_id,
+                ignore_patterns=["*.safetensors", "*.bin"]  # Only download MLX format
+            )
+        except Exception as e:
+            console.print(f"[red]Error pulling model: {str(e)}[/red]")
+            return
 
     cmd = f"mlx_lm.server --model {model_id} --port {port}"
     process = subprocess.Popen(cmd.split(), start_new_session=True)
@@ -71,14 +86,16 @@ def serve(model_id, port):
 @click.argument('model_id')
 def show(model_id):
     """Show information for a model"""
-    model_path = os.path.join(MODELS_DIR, model_id)
-    if not os.path.exists(model_path):
+    model_path = get_model_path(model_id)
+    if not model_path:
         console.print(f"[red]Model {model_id} not found locally[/red]")
         return
 
-    # TODO: Add model info display
+    # Show model info
     console.print(f"[green]Model: {model_id}[/green]")
     console.print(f"Path: {model_path}")
+    
+    # TODO: Add more model info display (config, size, etc)
 
 @cli.command()
 @click.argument('model_id')
@@ -112,19 +129,17 @@ def stop(port):
 @click.argument('model_id')
 def pull(model_id):
     """Pull a model from Hugging Face"""
-    model_path = os.path.join(MODELS_DIR, model_id)
-    if os.path.exists(model_path):
-        console.print(f"[yellow]Model {model_id} already exists locally[/yellow]")
+    if get_model_path(model_id):
+        console.print(f"[yellow]Model {model_id} already exists in cache[/yellow]")
         return
 
     try:
-        api = HfApi()
-        api.snapshot_download(
+        model_path = snapshot_download(
             repo_id=model_id,
-            local_dir=model_path,
             ignore_patterns=["*.safetensors", "*.bin"]  # Only download MLX format
         )
         console.print(f"[green]Successfully pulled model {model_id}[/green]")
+        console.print(f"Cached at: {model_path}")
     except Exception as e:
         console.print(f"[red]Error pulling model: {str(e)}[/red]")
 
@@ -132,8 +147,8 @@ def pull(model_id):
 @click.argument('model_id')
 def push(model_id):
     """Push a model to Hugging Face"""
-    model_path = os.path.join(MODELS_DIR, model_id)
-    if not os.path.exists(model_path):
+    model_path = get_model_path(model_id)
+    if not model_path:
         console.print(f"[red]Model {model_id} not found locally[/red]")
         return
 
@@ -153,14 +168,21 @@ def list():
     """List downloaded models"""
     table = Table(show_header=True, header_style="bold magenta")
     table.add_column("Model ID")
-    table.add_column("Status")
+    table.add_column("Cache Location")
     table.add_column("Size")
 
-    for model in os.listdir(MODELS_DIR):
-        model_path = os.path.join(MODELS_DIR, model)
-        size = sum(f.stat().st_size for f in Path(model_path).glob('**/*') if f.is_file())
-        size_str = f"{size / 1024 / 1024:.1f} MB"
-        table.add_row(model, "Downloaded", size_str)
+    cache_dir = get_cache_dir()
+    # This is a simplified approach - in practice you'd want to parse the cache more carefully
+    for model_dir in Path(cache_dir).glob("**/model.json"):
+        try:
+            model_path = model_dir.parent
+            size = sum(f.stat().st_size for f in model_path.glob('**/*') if f.is_file())
+            size_str = f"{size / 1024 / 1024:.1f} MB"
+            # Extract model ID from path - this is a simplified approach
+            model_id = str(model_path.relative_to(cache_dir)).split('/')[0]
+            table.add_row(model_id, str(model_path), size_str)
+        except Exception:
+            continue
 
     console.print(table)
 
@@ -195,8 +217,8 @@ def ps():
 @click.argument('model_id')
 def rm(model_id):
     """Remove a downloaded model"""
-    model_path = os.path.join(MODELS_DIR, model_id)
-    if not os.path.exists(model_path):
+    model_path = get_model_path(model_id)
+    if not model_path:
         console.print(f"[red]Model {model_id} not found locally[/red]")
         return
 
@@ -222,10 +244,17 @@ def chat(model_id, port, temperature):
     
     # Check if we need to start the server
     if str(port) not in running_models:
-        model_path = os.path.join(MODELS_DIR, model_id)
-        if not os.path.exists(model_path):
+        model_path = get_model_path(model_id)
+        if not model_path:
             console.print(f"[yellow]Model {model_id} not found locally. Attempting to pull...[/yellow]")
-            subprocess.run(['llmx', 'pull', model_id])
+            try:
+                model_path = snapshot_download(
+                    repo_id=model_id,
+                    ignore_patterns=["*.safetensors", "*.bin"]
+                )
+            except Exception as e:
+                console.print(f"[red]Error pulling model: {str(e)}[/red]")
+                return
 
         cmd = f"mlx_lm.server --model {model_id} --port {port}"
         process = subprocess.Popen(cmd.split(), start_new_session=True)

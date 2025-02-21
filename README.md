@@ -103,7 +103,7 @@ llmx chat mistralai/Mistral-7B-Instruct-v0.2 --temperature 0.7
 
 ## Model Storage
 
-Models are stored in `~/.llmx/models/` by default. Each model is stored in its own directory named after the model ID.
+Models are stored in the Hugging Face Hub's default cache location (`~/.cache/huggingface/hub` on Unix systems). This allows for better integration with other tools and avoids duplicating storage. The `llmx` tool manages only the running state of models in `~/.llmx/running.json`.
 
 ## Requirements
 
