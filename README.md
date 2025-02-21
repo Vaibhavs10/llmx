@@ -12,7 +12,7 @@ pip install .
 
 LLMX provides several commands for managing MLX-LM models:
 
-### Basic Commands
+### Available Commands
 
 ```bash
 # Start a model server
@@ -21,20 +21,11 @@ llmx serve <model_id> [--port PORT]
 # Start an interactive chat session
 llmx chat <model_id> [--port PORT] [--temperature TEMP]
 
-# Show model information
-llmx show <model_id>
-
-# Run a model server (alias for serve)
-llmx run <model_id> [--port PORT]
-
 # Stop a running model
 llmx stop <port>
 
 # Pull a model from Hugging Face
 llmx pull <model_id>
-
-# Push a model to Hugging Face
-llmx push <model_id>
 
 # List downloaded models
 llmx list
@@ -42,31 +33,23 @@ llmx list
 # List running models
 llmx ps
 
-# Remove a model
-llmx rm <model_id>
-
 # Get help
 llmx help
 ```
 
 ### Example Usage
 
-1. Pull a model from Hugging Face:
-```bash
-llmx pull mlx-community/Mistral-7B-Instruct-v0.3-4bit
-```
-
-2. Start an interactive chat session:
+1. Start an interactive chat session:
 ```bash
 llmx chat mlx-community/Mistral-7B-Instruct-v0.3-4bit --temperature 0.7
 ```
 
-3. Start the model server (for API access):
+2. Start a model server (for API access):
 ```bash
 llmx serve mlx-community/Mistral-7B-Instruct-v0.3-4bit --port 8080
 ```
 
-4. Make a request to the server:
+3. Make a request to the server:
 ```bash
 curl localhost:8080/v1/chat/completions \
   -H "Content-Type: application/json" \
@@ -76,12 +59,12 @@ curl localhost:8080/v1/chat/completions \
    }'
 ```
 
-5. List running models:
+4. List running models:
 ```bash
 llmx ps
 ```
 
-6. Stop the server:
+5. Stop the server:
 ```bash
 llmx stop 8080
 ```
@@ -96,11 +79,6 @@ The `chat` command provides an interactive chat interface where you can have a c
 - Type 'exit' or press Ctrl+C to end the chat
 - Option to keep the server running after chat ends
 
-Example:
-```bash
-llmx chat mistralai/Mistral-7B-Instruct-v0.2 --temperature 0.7
-```
-
 ## Model Storage
 
 Models are stored in the Hugging Face Hub's default cache location (`~/.cache/huggingface/hub` on Unix systems). This allows for better integration with other tools and avoids duplicating storage. The `llmx` tool manages only the running state of models in `~/.llmx/running.json`.
@@ -109,7 +87,6 @@ Models are stored in the Hugging Face Hub's default cache location (`~/.cache/hu
 
 - Python 3.8 or higher
 - MLX-LM
-- Click
 - Rich
 - Requests
 - Hugging Face Hub 
