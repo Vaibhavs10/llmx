@@ -13,7 +13,12 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
-dependencies = []  # Dependencies are managed in requirements.txt for better uv compatibility
+dependencies = [
+    "requests>=2.31.0",
+    "rich>=13.0.0",
+    "mlx-lm>=0.0.3",
+    "huggingface-hub>=0.20.0",
+]
 
 [project.scripts]
 llmx = "llmx.cli:main"

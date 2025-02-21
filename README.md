@@ -4,32 +4,24 @@ A CLI tool for managing MLX-LM models and servers. LLMX provides a convenient in
 
 ## Installation
 
-### Using uv (Recommended)
+### Quick Install (Recommended)
 
-First, install `uv` if you haven't already:
+Install directly using `uv`:
 ```bash
 pip install uv
+uv pip install git+https://github.com/vaibhavs10/llmx.git
 ```
 
-Then install llmx using uv:
+### Development Setup
+
+If you want to develop or modify the code:
 ```bash
-# Create and activate a new virtual environment
-uv venv
-source .venv/bin/activate  # On Unix/macOS
-# OR
-.venv\Scripts\activate     # On Windows
+# Clone the repository
+git clone https://github.com/vaibhavs10/llmx.git
+cd llmx
 
-# Install dependencies
-uv pip install -r requirements.txt
-
-# Install the package in editable mode
+# Install in development mode with uv
 uv pip install -e .
-```
-
-### Using pip (Alternative)
-
-```bash
-pip install .
 ```
 
 ## Usage
