@@ -8,7 +8,8 @@ A CLI tool for managing MLX-LM models and servers. LLMX provides a convenient in
 
 Install directly using `uv`:
 ```bash
-pip install uv
+uv venv --python 3.11
+source .venv/bin/activate
 uv pip install git+https://github.com/vaibhavs10/llmx.git
 ```
 
