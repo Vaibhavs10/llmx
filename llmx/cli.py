@@ -86,30 +86,33 @@ def ensure_model(model_id):
 def chat_session(port, temperature=0.7):
     """Run an interactive chat session"""
     messages = []
-    while True:
-        try:
-            user_input = Prompt.ask("[bold green]You[/bold green]")
-            if user_input.lower() == 'exit':
+    try:
+        while True:
+            try:
+                user_input = Prompt.ask("[bold green]You[/bold green]")
+                if user_input.lower() == 'exit':
+                    break
+                    
+                messages.append({"role": "user", "content": user_input})
+                response = requests.post(
+                    f"http://localhost:{port}/v1/chat/completions",
+                    json={"messages": messages, "temperature": temperature},
+                    headers={"Content-Type": "application/json"}
+                )
+                
+                if response.status_code == 200:
+                    assistant_message = response.json()["choices"][0]["message"]["content"]
+                    messages.append({"role": "assistant", "content": assistant_message})
+                    console.print(f"\n[bold purple]Assistant[/bold purple]")
+                    console.print(Markdown(assistant_message))
+                    console.print()
+                else:
+                    console.print(f"[red]Error: Server returned status code {response.status_code}[/red]")
+                    
+            except (KeyboardInterrupt, requests.exceptions.RequestException) as e:
                 break
-                
-            messages.append({"role": "user", "content": user_input})
-            response = requests.post(
-                f"http://localhost:{port}/v1/chat/completions",
-                json={"messages": messages, "temperature": temperature},
-                headers={"Content-Type": "application/json"}
-            )
-            
-            if response.status_code == 200:
-                assistant_message = response.json()["choices"][0]["message"]["content"]
-                messages.append({"role": "assistant", "content": assistant_message})
-                console.print(f"\n[bold purple]Assistant[/bold purple]")
-                console.print(Markdown(assistant_message))
-                console.print()
-            else:
-                console.print(f"[red]Error: Server returned status code {response.status_code}[/red]")
-                
-        except (KeyboardInterrupt, requests.exceptions.RequestException) as e:
-            break
+    finally:
+        return Confirm.ask("\nKeep server running?", default=False)
 
 def show_help():
     help_text = """
@@ -170,9 +173,10 @@ def main():
         if args.command == 'chat':
             import time
             time.sleep(2)  # Give server time to start
-            chat_session(int(port), getattr(args, 'temperature', 0.7))
-            if not Confirm.ask("\nKeep server running?", default=False):
+            keep_running = chat_session(int(port), getattr(args, 'temperature', 0.7))
+            if not keep_running:
                 stop_server(port, running_models)
+                console.print(f"[green]Stopped server on port {port}[/green]")
 
     elif args.command == 'stop':
         port = str(args.port)
