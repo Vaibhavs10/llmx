@@ -96,23 +96,40 @@ def chat_session(port, temperature=0.7):
                     break
                     
                 messages.append({"role": "user", "content": user_input})
-                response = requests.post(
-                    f"http://localhost:{port}/v1/chat/completions",
-                    json={"messages": messages, "temperature": temperature},
-                    headers={"Content-Type": "application/json"},
-                    timeout=30
-                )
+                console.print(f"\n[bold purple]Assistant[/bold purple]")
                 
-                if response.status_code == 200:
-                    assistant_message = response.json()["choices"][0]["message"]["content"]
-                    messages.append({"role": "assistant", "content": assistant_message})
-                    console.print(f"\n[bold purple]Assistant[/bold purple]")
-                    console.print(Markdown(assistant_message))
-                    console.print()
-                else:
-                    console.print(f"[red]Error: Server returned status code {response.status_code}[/red]")
+                # Stream the response
+                current_message = []
+                with requests.post(
+                    f"http://localhost:{port}/v1/chat/completions",
+                    json={"messages": messages, "temperature": temperature, "stream": True},
+                    headers={"Content-Type": "application/json"},
+                    timeout=30,
+                    stream=True
+                ) as response:
+                    if response.status_code != 200:
+                        console.print(f"[red]Error: Server returned status code {response.status_code}[/red]")
+                        continue
+                        
+                    for line in response.iter_lines():
+                        if not line:
+                            continue
+                        try:
+                            data = json.loads(line.decode('utf-8').removeprefix('data: '))
+                            if data.get("choices"):
+                                chunk = data["choices"][0].get("delta", {}).get("content", "")
+                                if chunk:
+                                    current_message.append(chunk)
+                                    console.print(chunk, end="")
+                        except json.JSONDecodeError:
+                            continue
+                
+                console.print()  # New line after response
+                assistant_message = "".join(current_message)
+                messages.append({"role": "assistant", "content": assistant_message})
                     
             except (KeyboardInterrupt, requests.exceptions.RequestException) as e:
+                console.print(f"\n[red]Error: {str(e)}[/red]")
                 break
     finally:
         return Confirm.ask("\nKeep server running?", default=False)
