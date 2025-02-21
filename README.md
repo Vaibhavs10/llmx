@@ -18,6 +18,9 @@ LLMX provides several commands for managing MLX-LM models:
 # Start a model server
 llmx serve <model_id> [--port PORT]
 
+# Start an interactive chat session
+llmx chat <model_id> [--port PORT] [--temperature TEMP]
+
 # Show model information
 llmx show <model_id>
 
@@ -53,12 +56,17 @@ llmx help
 llmx pull mlx-community/Mistral-7B-Instruct-v0.3-4bit
 ```
 
-2. Start the model server:
+2. Start an interactive chat session:
+```bash
+llmx chat mlx-community/Mistral-7B-Instruct-v0.3-4bit --temperature 0.7
+```
+
+3. Start the model server (for API access):
 ```bash
 llmx serve mlx-community/Mistral-7B-Instruct-v0.3-4bit --port 8080
 ```
 
-3. Make a request to the server:
+4. Make a request to the server:
 ```bash
 curl localhost:8080/v1/chat/completions \
   -H "Content-Type: application/json" \
@@ -68,14 +76,29 @@ curl localhost:8080/v1/chat/completions \
    }'
 ```
 
-4. List running models:
+5. List running models:
 ```bash
 llmx ps
 ```
 
-5. Stop the server:
+6. Stop the server:
 ```bash
 llmx stop 8080
+```
+
+## Interactive Chat Mode
+
+The `chat` command provides an interactive chat interface where you can have a conversation with the model. Features include:
+
+- Automatic server management (starts/stops as needed)
+- Markdown rendering of responses
+- Conversation history tracking
+- Type 'exit' or press Ctrl+C to end the chat
+- Option to keep the server running after chat ends
+
+Example:
+```bash
+llmx chat mistralai/Mistral-7B-Instruct-v0.2 --temperature 0.7
 ```
 
 ## Model Storage

@@ -6,6 +6,8 @@ import json
 import click
 from rich.console import Console
 from rich.table import Table
+from rich.markdown import Markdown
+from rich.prompt import Prompt
 from pathlib import Path
 import subprocess
 import signal
@@ -208,6 +210,92 @@ def rm(model_id):
     import shutil
     shutil.rmtree(model_path)
     console.print(f"[green]Removed model {model_id}[/green]")
+
+@cli.command()
+@click.argument('model_id')
+@click.option('--port', default=8080, help='Port to run the server on')
+@click.option('--temperature', default=0.7, help='Sampling temperature')
+def chat(model_id, port, temperature):
+    """Start an interactive chat session with a model"""
+    running_models = load_running_models()
+    server_started = False
+    
+    # Check if we need to start the server
+    if str(port) not in running_models:
+        model_path = os.path.join(MODELS_DIR, model_id)
+        if not os.path.exists(model_path):
+            console.print(f"[yellow]Model {model_id} not found locally. Attempting to pull...[/yellow]")
+            subprocess.run(['llmx', 'pull', model_id])
+
+        cmd = f"mlx_lm.server --model {model_id} --port {port}"
+        process = subprocess.Popen(cmd.split(), start_new_session=True)
+        
+        running_models[str(port)] = {
+            "model_id": model_id,
+            "pid": process.pid,
+            "port": port
+        }
+        save_running_models(running_models)
+        server_started = True
+        console.print(f"[green]Started model server for {model_id} on port {port}[/green]")
+        # Give the server a moment to start
+        import time
+        time.sleep(2)
+    
+    console.print("\n[bold blue]Starting chat session. Type 'exit' or press Ctrl+C to end the chat.[/bold blue]\n")
+    
+    messages = []
+    try:
+        while True:
+            user_input = Prompt.ask("[bold green]You[/bold green]")
+            
+            if user_input.lower() == 'exit':
+                break
+                
+            messages.append({"role": "user", "content": user_input})
+            
+            try:
+                response = requests.post(
+                    f"http://localhost:{port}/v1/chat/completions",
+                    json={
+                        "messages": messages,
+                        "temperature": temperature
+                    },
+                    headers={"Content-Type": "application/json"}
+                )
+                
+                if response.status_code == 200:
+                    assistant_message = response.json()["choices"][0]["message"]["content"]
+                    messages.append({"role": "assistant", "content": assistant_message})
+                    console.print(f"\n[bold purple]Assistant[/bold purple]")
+                    console.print(Markdown(assistant_message))
+                    console.print()
+                else:
+                    console.print(f"[red]Error: Server returned status code {response.status_code}[/red]")
+                    
+            except requests.exceptions.RequestException as e:
+                console.print(f"[red]Error communicating with the server: {str(e)}[/red]")
+                break
+                
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Chat session ended.[/yellow]")
+    
+    # If we started the server, ask if user wants to keep it running
+    if server_started:
+        keep_running = Prompt.ask(
+            "\nDo you want to keep the server running?",
+            choices=["y", "n"],
+            default="n"
+        )
+        
+        if keep_running.lower() != 'y':
+            try:
+                os.killpg(os.getpgid(running_models[str(port)]["pid"]), signal.SIGTERM)
+                del running_models[str(port)]
+                save_running_models(running_models)
+                console.print("[green]Stopped model server.[/green]")
+            except (KeyError, ProcessLookupError):
+                pass
 
 if __name__ == '__main__':
     cli() 
