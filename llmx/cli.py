@@ -14,7 +14,8 @@ from pathlib import Path
 import subprocess
 import signal
 import requests
-from huggingface_hub import HfApi, snapshot_download, try_to_load_from_cache, get_cache_dir
+from huggingface_hub import HfApi, snapshot_download, try_to_load_from_cache
+from huggingface_hub.constants import HUGGINGFACE_HUB_CACHE
 
 console = Console()
 
@@ -266,7 +267,7 @@ def list_models(args):
     table.add_column("Cache Location")
     table.add_column("Size")
 
-    cache_dir = get_cache_dir()
+    cache_dir = HUGGINGFACE_HUB_CACHE
     found_models = False
     
     with console.status("[bold blue]Scanning cache for models...[/bold blue]"):
