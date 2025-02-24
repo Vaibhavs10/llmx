@@ -203,7 +203,7 @@ def main():
             try:
                 parts = model_dir.name.split('--')
                 model_id = f"{parts[1]}/{parts[2]}" if len(parts) == 3 else parts[1]
-                size = sum(f.stat().st_size for f in model_dir.glob('**/*') if f.is_file())
+                size = sum(f.stat(follow_symlinks=False).st_size for f in model_dir.glob('**/*') if f.is_file())
                 table.add_row(model_id, f"{size / 1024 / 1024:.1f} MB")
             except Exception:
                 continue
